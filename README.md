@@ -1,5 +1,5 @@
 # Blender Particles Density
-## A Blender 2.79 addon which adjusts the particles count to maintain the desired density.
+## A Blender 2.79 addon which adjusts the particles count to maintain the desired density
 
 Blender is a nice tool for planting objects (like vegetation) onto the terrain using Particle System + painting the density Vertex Group, but the need of adjusting the particles count constantly can become very confusing and time-consuming - the addon should solve this workflow limitation.
 
