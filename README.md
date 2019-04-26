@@ -4,8 +4,8 @@
 Blender is a nice tool for planting objects (like vegetation) using Particle System + Density Vertex Group, but the need of adjusting the particles count constantly as you progress with the scenery can become very confusing and time-consuming - the addon should solve this workflow limitation.
 
 ## Original Behavior
-Normally, you set the total *Emmission Number*.<br/>
-As this is the constant number, the density gets lower as you Weight Paint more area (and vice-versa):
+Normally, you set the total *Emmission Number* to get a density you are happy with.<br/>
+But as this is the constant number, the density gets lower as you Weight Paint more area (and vice-versa):
 ![](readme-files/standard.gif)
 
 
