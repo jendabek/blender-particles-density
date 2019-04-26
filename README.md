@@ -20,6 +20,7 @@ Additionally, even if you modify the *Emitter* mesh, the *Density* will keep the
 - Install it as an usual *Addon*, search for *Density* and enable it
 ![](readme-files/blender-prefs-addon.png)
 - The new *Density* settings can be now found in a *Particle System* tab
+![](readme-files/addon-options.png)
 
 ### How to use it
 - Each *Particle System* has now it's own *Density* settings (which can be *Enabled* or *Disabled*)
@@ -31,4 +32,7 @@ Additionally, even if you modify the *Emitter* mesh, the *Density* will keep the
 - The addon should be very well optimized (I tested it on my very particle-heavy projects and made many performance-fixes), but the code is not exactly the most beautiful one and as my programming skills are not award-winning, there is maybe even hapenning something I am not aware of :)
 
 **NOTE: Use at your own risk!**
-Please be very careful when using the addon, nobody tested it extensively so far (except myself), so even though I haven't found any bugs, there are almost certainly some.
+Please be very careful when using the addon, nobody tested it extensively so far (except myself), so even though I haven't found any bugs, there are almost certainly some - please report any issues you find!
+
+Thanks,
+Jan
