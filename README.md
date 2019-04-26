@@ -37,3 +37,5 @@ Please be very careful when using the addon, nobody tested it extensively so far
 
 Thanks,
 Jan
+
+[[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=35AZKW44A96QQ&item_name=Particles+Density+-+Blender+Addon&currency_code=CZK&source=url)
