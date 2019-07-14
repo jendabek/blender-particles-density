@@ -1,8 +1,8 @@
 #TODO count the density by area covered instead of vertices total vs group count
 #TODO further optimization of update_particles_count() -  update only visible p_systems
 #TODO further optimization - some checkings should be processed in a time interval
-#TODO add feature - adjust density of all particle systems that use  the same v. group
-#TODO add feature - enable / disable on all
+#TODO edit feature - adjust density of all particle systems that use  the same v. group - make it more clear (disbled ones should be modifier as well?)
+#TODO add feature - enable / disable on all;
 
 
 bl_info = {
@@ -38,7 +38,7 @@ from bpy.app.handlers import persistent
 
 class Globals():
 	update_count_tolerance = 0.1
-	vgroups_average_weight_cache = None
+	v_groups_average_weight_cache = None
 	allow_update_by_ui = True
 	updated_timestamp = 0
 	update_interval = 1
@@ -49,9 +49,25 @@ class Globals():
 	last_p_system = None
 	last_density_group = None
 
-class Particles_Density(bpy.types.Operator):
-	bl_idname = "object.particles_density"
-	bl_label = "Particles Auto Count"
+class Weight_Paint_Particle_System_Vertex_Group_Density(bpy.types.Operator):
+	bl_idname = "view3d.weight_paint_by_particle_system"
+	bl_label = "Weight Paint Particle System Vertex Group Density"
+	bl_description = "Switches to this vertex group and enters Weight Paint mode"
+
+	def execute(self, context):	
+		obj = context.object
+		p_system_active = obj.particle_systems.active
+		if p_system_active and p_system_active.vertex_group_density:
+			for v_group in obj.vertex_groups:
+				if v_group.name == p_system_active.vertex_group_density:
+					if obj.vertex_groups.active_index != v_group.index:
+						obj.vertex_groups.active_index = v_group.index
+					break
+
+			if obj.mode != "WEIGHT_PAINT":
+				bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+		
+		return {'FINISHED'}
 
 class ParticlesDensity_AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
@@ -91,17 +107,62 @@ class OptionsPanel_Properties(PropertyGroup):
 		if(Globals.allow_update_by_ui):
 			update_particles_count(obj)
 	
+	def multiply_density_v_group(self, context):
+		
+		if(Globals.allow_update_by_ui):
+
+			obj = context.active_object
+			v_group_density = obj.particle_systems.active.vertex_group_density
+
+			if v_group_density:
+				for psystem in obj.particle_systems:
+
+					if(psystem.vertex_group_density == v_group_density and psystem.settings["density_settings"]["enabled"]):
+						psystem.settings["density_settings"]["density"] *= self.density_same_v_group_multiplier
+
+			Globals.allow_update_by_ui = False
+
+			self.density_same_v_group_multiplier = 1
+			update_particles_count(obj)
+
+			Globals.allow_update_by_ui = True
+
+	def multiply_density(self, context):
+		
+		if(Globals.allow_update_by_ui):
+
+			obj = context.active_object
+			obj.particle_systems.active.settings["density_settings"]["density"] *= self.density_multiplier
+
+			Globals.allow_update_by_ui = False
+
+			self.density_multiplier = 1
+			update_particles_count(obj)
+
+			Globals.allow_update_by_ui = True
+
 	enabled = BoolProperty(
-			default=False,
-			update=update_enabled,
-			description="Enables / disables the auto-adjustment of particles count (Emission Number) for this particle system to get the desired density"
-			)
+		default=False,
+		update=update_enabled,
+		description="Enables / disables the density-driven particles count for this particle system"
+	)
 	density = FloatProperty(
-			update=update_density,
-			description="Particles count per 1 square distance unit",
-			default=1,
-			min=0
-			)
+		min=0,
+		update=update_density,
+		default=1,
+		description="Sets the particles density for this particle system"
+	)
+	density_multiplier = FloatProperty(
+		default = 1,
+		update=multiply_density,
+		description="Mutliplies the density by the given multiplier"
+	)
+
+	density_same_v_group_multiplier = FloatProperty(
+		default = 1,
+		update=multiply_density_v_group,
+		description="Multiplies the density by the given multiplier for all particle systems which use the same density vertex group"
+	)
 	
 class OptionsPanel(bpy.types.Panel):
 	bl_idname = "panel.particles_density"
@@ -116,9 +177,7 @@ class OptionsPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		layout = self.layout
-
-		# row = layout.row()
-		# row.label(text="Particle System:")
+		p_system = context.object.particle_systems.active
 		
 		box = layout.box()
 
@@ -136,17 +195,41 @@ class OptionsPanel(bpy.types.Panel):
 
 		row = box.row()
 		row.enabled = context.scene.optionspanel_properties.enabled
-		row.prop(context.scene.optionspanel_properties, "density", text=density_label)
+		# split = row.split(0.6)
 
+		# left = split.column(align=True)
+		row.prop(context.scene.optionspanel_properties, "density", text=density_label)
+		# left.prop(context.scene.optionspanel_properties, "density", text=density_label)
+
+		# right = split.column()
+		# right.prop(context.scene.optionspanel_properties, "density_multiplier", text="Multiply")
+		
 		layout.separator()
-		row = layout.row()
-		row.label(text="Global Preferences:")
+
+		if p_system.vertex_group_density:
+
+			box = layout.box()
+
+			row = box.row()
+			row.label(text="Vertex Group (" + p_system.vertex_group_density + "):")
+
+			row = box.row()
+			row.operator("view3d.weight_paint_by_particle_system", text="Enter Weight Paint", icon="BRUSH_DATA")
+			row.enabled = True if p_system.vertex_group_density else False
+			
+			row.prop(context.scene.optionspanel_properties, "density_same_v_group_multiplier", text="Multiply")
+			row.enabled = True if p_system.vertex_group_density else False
+
+			layout.separator()
 		
 		box = layout.box()
+
+		row = box.row()
+		row.label(text="Global Options:")
 		row = box.row()
 		row.prop(context.user_preferences.addons[__name__].preferences, "density_tolerance", slider=True, text="Update Tolerance (%)")
 
-def update_vgroups_average_weight_cache():
+def update_v_groups_average_weight_cache():
 	obj = bpy.context.object
 	groups_weight_sums = {}
 
@@ -157,20 +240,23 @@ def update_vgroups_average_weight_cache():
 			else:
 				groups_weight_sums[g.group] = 0
 	
-	if Globals.vgroups_average_weight_cache is not None:
-		Globals.vgroups_average_weight_cache.clear()
+	if Globals.v_groups_average_weight_cache is not None:
+		Globals.v_groups_average_weight_cache.clear()
 	else:
-		Globals.vgroups_average_weight_cache = {}
+		Globals.v_groups_average_weight_cache = {}
 
 	vertices_count = len(obj.data.vertices)
 	
-	for vgroup in obj.vertex_groups:
-		if vgroup.index in groups_weight_sums:
-			Globals.vgroups_average_weight_cache[vgroup.index] = {"vgroup_name": vgroup.name, "weight_average": (groups_weight_sums[vgroup.index] / vertices_count)}
-		else:
-			Globals.vgroups_average_weight_cache[vgroup.index] = {"vgroup_name": vgroup.name, "weight_average": 0}
+	for v_group in obj.vertex_groups:
+		
+		average = 0
+
+		if v_group.index in groups_weight_sums:
+			average = groups_weight_sums[v_group.index] / vertices_count
 	
-	print("weights cache updated")
+		Globals.v_groups_average_weight_cache[v_group.index] = {"v_group_name": v_group.name, "weight_average": average}
+
+	print("weights average cache updated")
 
 def get_mesh_area(obj):
 	bm = bmesh.new()
@@ -184,11 +270,11 @@ def get_p_system_density(obj, p_system):
 
 	density = 0
 
-	# update_vgroups_average_weight_cache()
+	# update_v_groups_average_weight_cache()
 
 	if p_system.vertex_group_density:
-			vgroup = obj.vertex_groups[p_system.vertex_group_density]
-			weight_average = Globals.vgroups_average_weight_cache[vgroup.index]["weight_average"]
+			v_group = obj.vertex_groups[p_system.vertex_group_density]
+			weight_average = Globals.v_groups_average_weight_cache[v_group.index]["weight_average"]
 	else:
 			weight_average = 1
 	
@@ -208,7 +294,7 @@ def update_particles_count(obj):
 		return
 	
 	mesh_area = get_mesh_area(obj)
-	vgroups = obj.vertex_groups
+	v_groups = obj.vertex_groups
 
 	for p_system in particle_systems:
 			
@@ -216,8 +302,8 @@ def update_particles_count(obj):
 			continue
 
 		if p_system.vertex_group_density:
-			vgroup = vgroups[p_system.vertex_group_density]
-			weight_average = Globals.vgroups_average_weight_cache[vgroup.index]["weight_average"]
+			v_group = v_groups[p_system.vertex_group_density]
+			weight_average = Globals.v_groups_average_weight_cache[v_group.index]["weight_average"]
 		else:
 			weight_average = 1
 
@@ -277,9 +363,9 @@ def on_scene_update(scene):
 
 	if(
 		obj.data.is_updated or
-		Globals.vgroups_average_weight_cache is None or
+		Globals.v_groups_average_weight_cache is None or
 		obj	!= Globals.last_obj or
-		len(obj.vertex_groups) != len(Globals.vgroups_average_weight_cache) or
+		len(obj.vertex_groups) != len(Globals.v_groups_average_weight_cache) or
 		len(obj.particle_systems) != Globals.last_p_systems_count or
 		(obj.particle_systems.active == Globals.last_p_system and obj.particle_systems.active.vertex_group_density != Globals.last_density_group) or
 		bpy.context.mode != Globals.last_mode):
@@ -287,14 +373,14 @@ def on_scene_update(scene):
 		updates_needed = True
 
 	else:
-		for vgroup in obj.vertex_groups:
-			if Globals.vgroups_average_weight_cache[vgroup.index]["vgroup_name"] != vgroup.name:
+		for v_group in obj.vertex_groups:
+			if Globals.v_groups_average_weight_cache[v_group.index]["v_group_name"] != v_group.name:
 				updates_needed = True
 				break
 			
 	
 	if updates_needed:
-		update_vgroups_average_weight_cache()
+		update_v_groups_average_weight_cache()
 		update_particles_count(obj)
 		Globals.updated_timestamp = time.time()
 	
