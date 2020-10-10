@@ -11,7 +11,7 @@ bl_info = {
     "version": (0, 8, 5),
     "blender": (2, 80, 0),
     "location": "Properties > Particle System",
-    "description": "",
+    "description": "Adjusts the particles count automatically to preserve the desired density",
     "category": "Particles"}
 
 import bpy
@@ -175,7 +175,7 @@ class PD_OptionsPanel_Properties(PropertyGroup):
     density_same_v_group_multiplier: FloatProperty(
         default = 1,
         update=multiply_density_v_group,
-        description="Multiplies the density for all particle systems using this vertex group"
+        description="Multiplies the density for all particle systems which use this vertex group"
     )
     
 class PD_OptionsPanel(bpy.types.Panel):
@@ -251,7 +251,7 @@ class PD_OptionsPanel_Density_Vertex_Group(bpy.types.Panel):
     bl_context = "particle"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
-    bl_label = "Density Vertex Group"
+    bl_label = "Vertex Group Options"
     bl_options = {"DEFAULT_CLOSED"}
 
     @classmethod
@@ -271,12 +271,12 @@ class PD_OptionsPanel_Density_Vertex_Group(bpy.types.Panel):
         row.label(text=p_system.vertex_group_density + ":")
 
         row = box.row()
-        row.operator("view3d.weight_paint_by_particle_system", text="Paint Weights", icon="MOD_VERTEX_WEIGHT")
+        row.operator("view3d.weight_paint_by_particle_system", text="Paint Weights", icon="BRUSH_DATA")
         
         op = row.operator("view3d.weight_paint_mode_exit", text="Exit Paint", icon="FILE_PARENT")
         
         row = box.row()
-        row.prop(context.scene.optionspanel_properties, "density_same_v_group_multiplier", text="Multiply")
+        row.prop(context.scene.optionspanel_properties, "density_same_v_group_multiplier", text="Multiply Density")
 
         layout.separator()
 
@@ -286,7 +286,7 @@ class PD_OptionsPanel_Extra(bpy.types.Panel):
     bl_context = "particle"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
-    bl_label = "Options"
+    bl_label = "Global Options"
     bl_options = {"DEFAULT_CLOSED"}
 
     def draw(self, context):
