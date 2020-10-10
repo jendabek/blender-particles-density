@@ -49,10 +49,23 @@ class Globals():
     last_p_system = None
     last_density_group = None
 
+class PD_Weight_Paint_Mode_Exit(bpy.types.Operator):
+    bl_idname = "view3d.weight_paint_mode_exit"
+    bl_label = "Weight Paint Mode Exit"
+    bl_description = "Exits to Object mode"
+
+    def execute(self, context): 
+        bpy.ops.object.mode_set(mode="OBJECT")
+        return {'FINISHED'}
+
+    @classmethod
+    def poll(cls, context):
+        return bpy.context.mode == "PAINT_WEIGHT"
+
 class PD_Weight_Paint_Particle_System_Vertex_Group_Density(bpy.types.Operator):
     bl_idname = "view3d.weight_paint_by_particle_system"
     bl_label = "Weight Paint Particle System Vertex Group Density"
-    bl_description = "Switches to this vertex group and enters Weight Paint mode"
+    bl_description = "Enters weight painting of this vertex group"
 
     def execute(self, context): 
         obj = context.object
@@ -73,7 +86,7 @@ class PD_AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
     density_tolerance: bpy.props.IntProperty(
         name = "Update Tolerance (%)",
-        description = "The count is adjusted when the density gets different from the current one by the given percentage.\nUseful when working with large amount of particles to avoid slowdowns caused by changing the particles count constantly",
+        description = "The count will be adjusted only when the difference from the current one reaches the given %.\nUseful when working with large amount of particles to avoid slowdowns caused by changing the count with every small edits",
                 min = 0,
                 max = 100,
         default = 10)
@@ -145,7 +158,7 @@ class PD_OptionsPanel_Properties(PropertyGroup):
     enabled: BoolProperty(
         default=False,
         update=update_enabled,
-        description="Enables / disables the density-driven particles count for this particle system"
+        description="Enables / disables the automatic particles count adjustment for this particle system"
     )
     density: FloatProperty(
         min=0,
@@ -162,7 +175,7 @@ class PD_OptionsPanel_Properties(PropertyGroup):
     density_same_v_group_multiplier: FloatProperty(
         default = 1,
         update=multiply_density_v_group,
-        description="Multiplies the density by the given multiplier for all particle systems which use the same density vertex group"
+        description="Multiplies the density for all particle systems using this vertex group"
     )
     
 class PD_OptionsPanel(bpy.types.Panel):
@@ -205,28 +218,80 @@ class PD_OptionsPanel(bpy.types.Panel):
         # right = split.column()
         # right.prop(context.scene.optionspanel_properties, "density_multiplier", text="Multiply")
         
-        layout.separator()
+        # layout.separator()
 
-        if p_system.vertex_group_density:
+        # if p_system.vertex_group_density:
 
-            box = layout.box()
+        #     box = layout.box()
 
-            row = box.row()
-            row.label(text="Vertex Group (" + p_system.vertex_group_density + "):")
+        #     row = box.row()
+        #     row.label(text=p_system.vertex_group_density + " - Vertex Group:")
 
-            row = box.row()
-            row.operator("view3d.weight_paint_by_particle_system", text="Enter Weight Paint", icon="BRUSH_DATA")
-            row.enabled = True if p_system.vertex_group_density else False
+        #     row = box.row()
+        #     row.operator("view3d.weight_paint_by_particle_system", text="Paint Weights", icon="MOD_VERTEX_WEIGHT")
             
-            row.prop(context.scene.optionspanel_properties, "density_same_v_group_multiplier", text="Multiply")
-            row.enabled = True if p_system.vertex_group_density else False
+            
+        #     op = row.operator("view3d.weight_paint_mode_exit", text="Exit Paint", icon="FILE_PARENT")
+            
+        #     row = box.row()
+        #     row.prop(context.scene.optionspanel_properties, "density_same_v_group_multiplier", text="Multiply")
 
-            layout.separator()
+        #     layout.separator()
         
+        # box = layout.box()
+
+        # row = box.row()
+        # row.label(text="Options:")
+        # row = box.row()
+        # row.prop(context.preferences.addons[__name__].preferences, "density_tolerance", slider=True, text="Update Tolerance (%)")
+
+class PD_OptionsPanel_Density_Vertex_Group(bpy.types.Panel):
+    bl_idname = "PANEL_PT_particles_density_vertex_group_1"
+    bl_parent_id = "PANEL_PT_particles_density_1"
+    bl_context = "particle"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_label = "Density Vertex Group"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        p_system = context.object.particle_systems.active
+        if p_system.vertex_group_density:
+            return True
+        else:
+            return False
+
+    def draw(self, context):
+        layout = self.layout
+        p_system = context.object.particle_systems.active
+
         box = layout.box()
+        row = box.row()
+        row.label(text=p_system.vertex_group_density + ":")
 
         row = box.row()
-        row.label(text="Global Options:")
+        row.operator("view3d.weight_paint_by_particle_system", text="Paint Weights", icon="MOD_VERTEX_WEIGHT")
+        
+        op = row.operator("view3d.weight_paint_mode_exit", text="Exit Paint", icon="FILE_PARENT")
+        
+        row = box.row()
+        row.prop(context.scene.optionspanel_properties, "density_same_v_group_multiplier", text="Multiply")
+
+        layout.separator()
+
+class PD_OptionsPanel_Extra(bpy.types.Panel):
+    bl_idname = "PANEL_PT_particles_density_extra_1"
+    bl_parent_id = "PANEL_PT_particles_density_1"
+    bl_context = "particle"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_label = "Options"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        layout = self.layout
+        box = layout.box()
         row = box.row()
         row.prop(context.preferences.addons[__name__].preferences, "density_tolerance", slider=True, text="Update Tolerance (%)")
 
@@ -399,9 +464,12 @@ def on_scene_update(scene):
 
 classes = [
     PD_Weight_Paint_Particle_System_Vertex_Group_Density,
+    PD_Weight_Paint_Mode_Exit,
     PD_AddonPreferences,
     PD_OptionsPanel_Properties,
-    PD_OptionsPanel
+    PD_OptionsPanel,
+    PD_OptionsPanel_Density_Vertex_Group,
+    PD_OptionsPanel_Extra
 ]
 
 def register():
